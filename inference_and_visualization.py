@@ -50,6 +50,8 @@ class RULPredictor:
             attention_weights: Feature importance weights
         """
         if isinstance(x, np.ndarray):
+            # Handle NaN and Inf values
+            x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
             x = torch.FloatTensor(x)
         
         x = x.to(self.device)
@@ -76,6 +78,8 @@ class RULPredictor:
             attention_weights: [num_features]
         """
         if isinstance(x, np.ndarray):
+            # Handle NaN and Inf values
+            x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
             x = torch.FloatTensor(x)
         
         x = x.unsqueeze(0)  # Add batch dimension

@@ -178,6 +178,9 @@ class BatteryGraphBuilder:
             'timestamp'
         ]
         
+        # Note: Vehicle_speed and Distance_Travelled may not be in your database
+        # They will be filled with 0.0 if missing
+        
         self.feature_to_idx = {f: i for i, f in enumerate(self.features)}
         
     def build_edge_index(self):

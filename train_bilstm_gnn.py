@@ -88,10 +88,19 @@ class BatteryDataset(Dataset):
             # Input window
             x_window = self.data[self.feature_cols].iloc[i:i+self.window_size].values
             
+            # Check for missing or invalid data
+            if np.isnan(x_window).any() or np.isinf(x_window).any():
+                # Fill NaN and Inf with 0
+                x_window = np.nan_to_num(x_window, nan=0.0, posinf=0.0, neginf=0.0)
+            
             # Future features for forecasting
             y_features = self.data[self.feature_cols].iloc[
                 i+self.window_size:i+self.window_size+self.forecast_horizon
             ].values
+            
+            # Check for missing or invalid data in future features
+            if np.isnan(y_features).any() or np.isinf(y_features).any():
+                y_features = np.nan_to_num(y_features, nan=0.0, posinf=0.0, neginf=0.0)
             
             # RUL at the end of input window
             y_rul = self.rul_values[i+self.window_size-1]
@@ -270,8 +279,35 @@ def prepare_data(data_path, train_size=0.8, val_size=0.1, test_size=0.1):
     # Load data
     df = pd.read_csv(data_path)
     
+    print(f"Loaded data: {len(df)} rows, {len(df.columns)} columns")
+    
+    # Check for required columns
+    required_cols = [
+        'Battery_Current', 'Battery_Voltage', 'Battery_Temp', 'Battery_SoH',
+        'Estimated_SoE', 'Estimated_Soc', 'Estimated_Battery_Capacity',
+        'estimated_range', 'Vehicle_speed', 'Distance_Travelled',
+        'LED_OverCurrent', 'LED_UnderTemp', 'LED_OverTemp',
+        'LED_UnderVoltage', 'LED_OverVoltage', 'Pack_Current',
+        'Pack_Voltage', 'SoP', 'Charging_Status',
+        'Charge_Discharge_Cycles', 'Time_To_Charge'
+    ]
+    
+    missing_cols = set(required_cols) - set(df.columns)
+    if missing_cols:
+        print(f"Warning: Missing columns {missing_cols}, filling with default values")
+        for col in missing_cols:
+            if 'LED_' in col or col == 'Charging_Status':
+                df[col] = False
+            else:
+                df[col] = 0.0
+    
     # Normalize features (except timestamp)
     feature_cols = [col for col in df.columns if col != 'timestamp']
+    
+    # Handle any remaining NaN or Inf values
+    df[feature_cols] = df[feature_cols].replace([np.inf, -np.inf], np.nan)
+    df[feature_cols] = df[feature_cols].fillna(0.0)
+    
     scaler = StandardScaler()
     df[feature_cols] = scaler.fit_transform(df[feature_cols])
     
@@ -283,6 +319,10 @@ def prepare_data(data_path, train_size=0.8, val_size=0.1, test_size=0.1):
     train_data = df[:train_end]
     val_data = df[train_end:val_end]
     test_data = df[val_end:]
+    
+    print(f"Train: {len(train_data)} rows")
+    print(f"Validation: {len(val_data)} rows")
+    print(f"Test: {len(test_data)} rows")
     
     return train_data, val_data, test_data, scaler
 
