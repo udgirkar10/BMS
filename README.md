@@ -160,4 +160,82 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    PREDICTION HEADS         
+│                    PREDICTION HEADS         e
+- Pack_Current ↔ Pack_Voltage
+- Estimated_SoC ↔ Estimated_SoE
+- Battery_SoH ↔ Estimated_Battery_Capacity
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+### Requirements
+al**
+- Battery_Temp → Battery_Voltage
+- Battery_Temp → SoP
+
+**Operational → Electrical**
+- Vehicle_speed → Battery_Current
+- Charging_Status → Battery_Current
+- Charging_Status → Battery_Voltage
+
+**State → Health**
+- Estimated_SoC → Battery_SoH
+- Charge_Discharge_Cycles → Battery_SoH
+- Charge_Discharge_Cycles → Estimated_Battery_Capacity
+
+**Faults → Health**
+- LED_OverCurrent → Battery_SoH
+- LED_OverTemp → Battery_SoH
+- LED_OverVoltage → Battery_SoH
+
+**Bidirectional Relationships**
+- Battery_Current ↔ Battery_Voltagalth**
+- Battery_Temp → Battery_SoH
+- Battery_Temp → Estimated_Battery_Capacity
+
+**Thermal → Electric                       │
+│  2. RUL Prediction: [batch, 1]                                 │
+│  3. Attention Weights: [batch, 22]                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Graph Structure
+
+The model uses a directed graph where edges represent physical/causal relationships:
+
+**Electrical → Health**
+- Battery_Current → Battery_SoH
+- Battery_Voltage → Battery_SoH
+- Battery_Current → Estimated_Battery_Capacity
+- Pack_Current → Battery_SoH
+
+**Thermal → He─────────────────────────────────────────────────────────────────┐
+│                         OUTPUTS                                 │
+│                                                                 │
+│  1. Forecasted Features: [batch, 50, 22]   │
+                         ▼
+┌               │
+│     Output: RUL value (cycles remaining)                        │
+│                                                                 │
+│  3. ATTENTION WEIGHTS (Interpretability)                        │
+│     Input: Last hidden [batch, 256]                             │
+│     → Linear(256 → 22) + Softmax                                │
+│     Output: Feature importance [batch, 22]                      │
+└─────────────────────────────────────────────────────────────────┘
+                      , 50, 22]                                │
+│     Output: Future feature values                               │
+│                                                                 │
+│  2. RUL PREDICTION HEAD                                         │
+│     Input: Last hidden [batch, 256]                             │
+│     → Linear(256 → 128) + ReLU + Dropout                        │
+│     → Linear(128 → 64) + ReLU + Dropout                         │
+│     → Linear(64 → 1)                                                 │
+│                                                                 │
+│  1. FORECASTING HEAD                                            │
+│     Input: Last hidden [batch, 256]                             │
+│     → Linear(256 → 256) + ReLU + Dropout                        │
+│     → Linear(256 → forecast_horizon × num_features)             │
+│     → Reshape to [batch
