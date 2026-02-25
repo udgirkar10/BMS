@@ -159,3 +159,5 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PREDICTION HEADS         
