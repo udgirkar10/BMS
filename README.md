@@ -100,3 +100,62 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 **Remaining Useful Life (RUL)** is the estimated time or usage remaining before a battery reaches its end-of-life threshold.
 
 ### RUL Expressions
+
+1. **Cycle-based**: Number of charge-discharge cycles until SoH drops to 80% (e.g., "500 cycles remaining")
+2. **Time-based**: Calendar time remaining (e.g., "2.5 years remaining")
+3. **Distance-based**: Kilometers the vehicle can travel (e.g., "50,000 km remaining")
+4. **Energy throughput**: Total energy that can be cycled (e.g., "15,000 kWh remaining")
+
+### End-of-Life Threshold
+- Current Battery_SoH = 1.0 (100%)
+- End-of-life threshold = 0.8 (80%)
+- RUL = cycles/time/distance until SoH reaches 0.8
+
+**Note**: RUL is NOT when battery is completely dead (0%), but when it's no longer useful for its intended purpose (typically 80% of original capacity for EVs).
+
+## Model Architecture Details
+
+### Architecture Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    INPUT TIME-SERIES DATA                       │
+│              [batch, time_steps, num_features]                  │
+│                   Example: [32, 100, 22]                        │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              GRAPH ATTENTION NETWORK (GAT)                      │
+│                                                                 │
+│  For each timestep:                                             │
+│    • GAT Layer 1: Multi-Head Attention (4 heads)               │
+│      - Computes attention: α_ij = attention(h_i, h_j)          │
+│      - Aggregates neighbors: h_i' = Σ(α_ij × W × h_j)          │
+│      - Output: [batch, 256]                                     │
+│                                                                 │
+│    • GAT Layer 2: Multi-Head Attention (4 heads)               │
+│      - Refines representations                                  │
+│      - Output: [batch, 256]                                     │
+│                                                                 │
+│  Result: Node embeddings capturing feature relationships        │
+│  Output: [batch, time_steps, 256]                              │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              BIDIRECTIONAL LSTM (BiLSTM)                        │
+│                                                                 │
+│  Forward LSTM:  Processes t=0 → t=99 (past to present)        │
+│  Backward LSTM: Processes t=99 → t=0 (future to past)         │
+│                                                                 │
+│  • Layer 1: BiLSTM(256 → 128)                                  │
+│    - Concatenated output: [batch, time, 256]                   │
+│                                                                 │
+│  • Layer 2: BiLSTM(256 → 128)                                  │
+│    - Concatenated output: [batch, time, 256]                   │
+│                                                                 │
+│  Last hidden state: [batch, 256]                               │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
