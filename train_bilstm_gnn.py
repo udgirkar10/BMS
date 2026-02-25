@@ -257,14 +257,15 @@ class RULTrainer:
         print("\nTraining completed! Best model loaded.")
 
 
-def prepare_data(data_path, test_size=0.2, val_size=0.1):
+def prepare_data(data_path, train_size=0.8, val_size=0.1, test_size=0.1):
     """
     Load and prepare data for training
     
     Args:
         data_path: Path to CSV file with battery data
-        test_size: Proportion of data for testing
-        val_size: Proportion of training data for validation
+        train_size: Proportion of data for training (default: 0.8)
+        val_size: Proportion of data for validation (default: 0.1)
+        test_size: Proportion of data for testing (default: 0.1)
     """
     # Load data
     df = pd.read_csv(data_path)
@@ -275,13 +276,13 @@ def prepare_data(data_path, test_size=0.2, val_size=0.1):
     df[feature_cols] = scaler.fit_transform(df[feature_cols])
     
     # Split data (time-series split - no shuffling)
-    train_val_size = int(len(df) * (1 - test_size))
-    train_val_data = df[:train_val_size]
-    test_data = df[train_val_size:]
+    # 80% train, 10% validation, 10% test
+    train_end = int(len(df) * train_size)
+    val_end = int(len(df) * (train_size + val_size))
     
-    train_size = int(len(train_val_data) * (1 - val_size))
-    train_data = train_val_data[:train_size]
-    val_data = train_val_data[train_size:]
+    train_data = df[:train_end]
+    val_data = df[train_end:val_end]
+    test_data = df[val_end:]
     
     return train_data, val_data, test_data, scaler
 

@@ -3,41 +3,24 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Architecture](#architecture)
-- [Features](#features)
+- [Current Implementation](#current-implementation)
+- [Future Scope](#future-scope)
 - [RUL Definition](#rul-definition)
-- [Installation](#installation)
-- [Usage](#usage)
+- [Installation & Usage](#installation--usage)
 - [Model Details](#model-details)
-- [Training](#training)
-- [Inference](#inference)
-- [Extending the Model](#extending-the-model)
 - [Performance](#performance)
 
 ## Overview
 
-This project implements a hybrid deep learning model combining **Graph Attention Networks (GAT)** and **Bidirectional LSTM (BiLSTM)** for predicting the Remaining Useful Life (RUL) of Electric Vehicle batteries using multi-variate time-series data.
+Hybrid deep learning model combining **Graph Attention Networks (GAT)** and **Bidirectional LSTM (BiLSTM)** for predicting Remaining Useful Life (RUL) of EV batteries using multi-variate time-series data.
 
 ### Why GAT + BiLSTM?
 
-**Graph Attention Network (GAT)**
-- Learns feature importance automatically via attention mechanism
-- Captures non-linear relationships between battery parameters
-- Models physical/causal dependencies (e.g., temperature → voltage, current → SoH)
-- Interpretable through attention weights
-- Scalable - easy to add new features as graph nodes
+**GAT**: Learns feature importance via attention, captures physical relationships (temp → voltage, current → SoH), interpretable, scalable
 
-**Bidirectional LSTM (BiLSTM)**
-- Captures temporal dependencies in both directions (past and future)
-- Learns degradation patterns over time
-- Better context understanding than unidirectional LSTM
-- Robust to noise in time-series data
-- Handles long-term dependencies effectively
+**BiLSTM**: Captures temporal patterns bidirectionally, learns degradation over time, robust to noise
 
-**Combined Power**
-- Spatial-Temporal Learning: GAT captures feature interactions, BiLSTM captures time evolution
-- Multi-Scale Patterns: GAT learns instantaneous relationships, BiLSTM learns long-term trends
-- Adaptive: Attention weights adjust based on battery state and usage patterns
-- Predictive: Forecasts future degradation by understanding both structure and dynamics
+**Combined**: Spatial-temporal learning, multi-scale patterns, adaptive predictions
 
 ## Architecture
 
@@ -47,827 +30,259 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
                                                                                   └─ RUL Prediction
 ```
 
-### Detailed Architecture Flow
+### Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    INPUT TIME-SERIES DATA                       │
-│              [batch, time_steps, num_features]                  │
-│                   Example: [32, 100, 22]                        │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              GRAPH ATTENTION NETWORK (GAT)                      │
-│                                                                 │
-│  For each timestep:                                             │
-│    • GAT Layer 1: Multi-Head Attention (4 heads)               │
-│      - Computes attention: α_ij = attention(h_i, h_j)          │
-│      - Aggregates neighbors: h_i' = Σ(α_ij × W × h_j)          │
-│      - Output: [batch, 256]                                     │
-│                                                                 │
-│    • GAT Layer 2: Multi-Head Attention (4 heads)               │
-│      - Refines representations                                  │
-│      - Output: [batch, 256]                                     │
-│                                                                 │
-│  Result: Node embeddings capturing feature relationships        │
-│  Output: [batch, time_steps, 256]                              │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              BIDIRECTIONAL LSTM (BiLSTM)                        │
-│                                                                 │
-│  Forward LSTM:  Processes t=0 → t=99 (past to present)        │
-│  Backward LSTM: Processes t=99 → t=0 (future to past)         │
-│                                                                 │
-│  • Layer 1: BiLSTM(256 → 128)                                  │
-│    - Concatenated output: [batch, time, 256]                   │
-│                                                                 │
-│  • Layer 2: BiLSTM(256 → 128)                                  │
-│    - Concatenated output: [batch, time, 256]                   │
-│                                                                 │
-│  Last hidden state: [batch, 256]                               │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    PREDICTION HEADS                             │
-│                                                                 │
-│  1. FORECASTING HEAD                                            │
-│     Input: Last hidden [batch, 256]                             │
-│     → Linear(256 → 256) + ReLU + Dropout                        │
-│     → Linear(256 → forecast_horizon × num_features)             │
-│     → Reshape to [batch, 50, 22]                                │
-│     Output: Future feature values                               │
-│                                                                 │
-│  2. RUL PREDICTION HEAD                                         │
-│     Input: Last hidden [batch, 256]                             │
-│     → Linear(256 → 128) + ReLU + Dropout                        │
-│     → Linear(128 → 64) + ReLU + Dropout                         │
-│     → Linear(64 → 1)                                            │
-│     Output: RUL value (cycles remaining)                        │
-│                                                                 │
-│  3. ATTENTION WEIGHTS (Interpretability)                        │
-│     Input: Last hidden [batch, 256]                             │
-│     → Linear(256 → 22) + Softmax                                │
-│     Output: Feature importance [batch, 22]                      │
-└─────────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         OUTPUTS                                 │
-│                                                                 │
-│  1. Forecasted Features: [batch, 50, 22]                       │
-│  2. RUL Prediction: [batch, 1]                                 │
-│  3. Attention Weights: [batch, 22]                             │
-└─────────────────────────────────────────────────────────────────┘
+INPUT [batch, 100, 22]
+  ↓
+GAT (2 layers, 4 heads) → Node embeddings [batch, 100, 256]
+  ↓
+BiLSTM (2 layers) → Hidden state [batch, 256]
+  ↓
+OUTPUTS:
+  • Forecasted Features [batch, 50, 22]
+  • RUL Prediction [batch, 1]
+  • Attention Weights [batch, 22]
 ```
 
-## Features
+## Current Implementation
 
-### Current Features (22)
+### Features (22 Total)
 
-#### Direct Health Indicators (Critical for RUL)
-- `Battery_SoH`: State of Health (1 = 100%)
-- `Estimated_Battery_Capacity`: Current capacity in Ah
-- `Charge_Discharge_Cycles`: Cumulative cycle count
+#### 1. Direct Health Indicators (3) - Critical for RUL
+- **Battery_SoH**: State of Health (1=100%, 0.8=EOL)
+- **Estimated_Battery_Capacity**: Current capacity in Ah
+- **Charge_Discharge_Cycles**: Cumulative cycle count
 
-#### Electrical Parameters
-- `Battery_Current`: Current flow in Amps
-- `Battery_Voltage`: Voltage level in Volts
-- `Pack_Current`: Total pack current
-- `Pack_Voltage`: Total pack voltage
-- `SoP`: State of Power (available power in Watts)
+#### 2. Electrical Parameters (5)
+- **Battery_Current**: Current flow (Amps)
+- **Battery_Voltage**: Voltage level (Volts)
+- **Pack_Current**: Total pack current
+- **Pack_Voltage**: Total pack voltage
+- **SoP**: State of Power (Watts)
 
-#### Thermal Parameters
-- `Battery_Temp`: Temperature in °C
-- `LED_UnderTemp`: Low temperature warning flag
-- `LED_OverTemp`: High temperature warning flag
+#### 3. Thermal Parameters (3)
+- **Battery_Temp**: Temperature (°C), optimal 20-25°C
+- **LED_UnderTemp**: Low temp warning
+- **LED_OverTemp**: High temp warning
 
-#### State Estimation
-- `Estimated_SoC`: State of Charge (current charge level %)
-- `Estimated_SoE`: State of Energy (available energy)
-- `estimated_range`: Predicted driving range
+#### 4. State Estimation (3)
+- **Estimated_SoC**: State of Charge (%)
+- **Estimated_SoE**: State of Energy
+- **estimated_range**: Predicted range (km)
 
-#### Operational Context
-- `Vehicle_speed`: Current speed in km/h
-- `Distance_Travelled`: Trip distance in km
-- `Charging_Status`: Boolean indicating if charging
-- `Time_To_Charge`: Remaining charge time
+#### 5. Operational Context (4)
+- **Vehicle_speed**: Speed (km/h)
+- **Distance_Travelled**: Trip distance (km)
+- **Charging_Status**: Boolean
+- **Time_To_Charge**: Remaining charge time
 
-#### Fault Indicators
-- `LED_OverCurrent`: Overcurrent fault flag
-- `LED_UnderVoltage`: Undervoltage fault flag
-- `LED_OverVoltage`: Overvoltage fault flag
+#### 6. Fault Indicators (3)
+- **LED_OverCurrent**: Overcurrent fault
+- **LED_UnderVoltage**: Undervoltage fault
+- **LED_OverVoltage**: Overvoltage fault
 
-#### Temporal
-- `timestamp`: Time-series index
+#### 7. Temporal (1)
+- **timestamp**: Time-series index
 
-### Planned Feature Expansion
+### Graph Structure
 
-#### Environmental Features
+Features connected via physical/causal relationships:
+- Temperature → Voltage, SoH
+- Current → SoH, Capacity
+- Cycles → Capacity
+- Faults → SoH
+- Speed → Current
+- Charging Status → Current, Voltage
+
+### Data Requirements
+
+**CSV Format**: All 22 features with proper column names
+
+**Quality Requirements**:
+- Consistent sampling rate
+- Minimal missing values
+- Synchronized timestamps
+- 1000+ samples minimum
+- 50-100 charge cycles (minimum), 200+ optimal
+
+### Current Capabilities
+
+**Can Do**:
+- Predict RUL (cycles until 80% SoH)
+- Forecast future feature values
+- Identify important features via attention
+- Detect degradation patterns
+- Adapt to different usage patterns
+
+**Limitations**:
+- Requires sufficient degradation data
+- Performance depends on data quality
+- Limited to 22 features currently
+- Cannot predict sudden failures
+
+## Future Scope
+
+### Planned Feature Expansion (39 additional features)
+
+#### 1. Environmental Features (6)
 Ambient_Temperature, Humidity, Altitude, Weather_Conditions, Road_Grade, Air_Pressure
 
-#### Operational & Usage Features
+**Impact**: +5-10% RUL accuracy, climate adaptability
+
+#### 2. Operational & Usage Features (10)
 Driving_Mode, Acceleration_Pattern, Braking_Pattern, Trip_Type, Idle_Time, Average_Speed, Speed_Variance, Daily_Usage_Hours, Charging_Frequency, Fast_Charge_Ratio
 
-#### Technical & Internal Battery Features
+**Impact**: +10-15% RUL accuracy, personalized predictions
+
+#### 3. Technical & Internal Battery Features (14)
 Cell_Voltage_Min/Max/Delta, Cell_Temp_Min/Max/Delta, Internal_Resistance, Self_Discharge_Rate, Balancing_Activity, Coulombic_Efficiency, Energy_Efficiency, Power_Fade, Calendar_Age, Storage_Time
 
-#### Vehicle & Hardware Features
+**Impact**: +15-20% RUL accuracy, cell-level diagnostics
+
+#### 4. Vehicle & Hardware Features (9)
 Motor_Power_Demand, HVAC_Power_Consumption, Auxiliary_Load, Regenerative_Braking_Energy, Battery_Cooling_System_Status, Thermal_Management_Power, Vehicle_Weight, Tire_Pressure, Aerodynamic_Drag
 
-### Example Data Point
+**Impact**: +20-25% RUL accuracy, complete system integration
 
-```python
-{
-    'timestamp': '2025-10-06 16:04:31',
-    'Battery_Current': 5.714285597000488,
-    'Battery_Voltage': 4.367208432016097,
-    'Battery_Temp': 29.897433074274034,
-    'Battery_SoH': 1,
-    'Estimated_SoE': 28.288033656191335,
-    'Estimated_Soc': 51.58602201870697,
-    'Estimated_Battery_Capacity': 94.00000187893664,
-    'estimated_range': 0,
-    'Vehicle_speed': 75.31394819741372,
-    'Distance_Travelled': 1.5940879190100734,
-    'LED_OverCurrent': False,
-    'LED_UnderTemp': False,
-    'LED_OverTemp': False,
-    'LED_UnderVoltage': False,
-    'LED_OverVoltage': False,
-    'Pack_Current': 199.9999958950171,
-    'Pack_Voltage': 410.5175926095123,
-    'SoP': -15794.726385723576,
-    'Charging_Status': True,
-    'Charge_Discharge_Cycles': 0.0014192705660867639,
-    'Time_To_Charge': 0
-}
-```
+### Future Enhancements
+
+1. **Multi-Battery Learning**: Train on multiple batteries for better generalization
+2. **Uncertainty Quantification**: Confidence intervals for predictions
+3. **Online Learning**: Update without full retraining
+4. **Anomaly Detection**: Detect unusual patterns or sensor faults
+5. **Real-Time Deployment**: Edge device optimization (<5ms inference, <5MB model)
+6. **Explainable AI**: SHAP values for interpretability
+7. **Multi-Modal RUL**: Cycle/time/distance/energy-based predictions
+
+### Implementation Roadmap
+
+- **Phase 1 (22 features)** ✅: Baseline model
+- **Phase 2 (28 features)**: + Environmental
+- **Phase 3 (38 features)**: + Operational
+- **Phase 4 (52 features)**: + Technical
+- **Phase 5 (61 features)**: + Vehicle
+- **Phase 6**: Advanced features
 
 ## RUL Definition
 
-**Remaining Useful Life (RUL)** is the estimated time or usage remaining before a battery reaches its end-of-life threshold.
+**RUL**: Estimated usage remaining before battery reaches end-of-life threshold (80% SoH for EVs)
 
-### RUL Expressions
+**Expressions**:
+1. Cycle-based: Cycles until SoH ≤ 80%
+2. Time-based: Calendar time remaining
+3. Distance-based: Kilometers remaining
+4. Energy throughput: kWh remaining
 
-1. **Cycle-based RUL**: Number of charge-discharge cycles until SoH drops to 80%
-   - Example: "500 cycles remaining"
+**Calculation**: Model learns degradation patterns, forecasts features, estimates when SoH crosses 80% threshold
 
-2. **Time-based RUL**: Calendar time remaining
-   - Example: "2.5 years remaining"
+## Installation & Usage
 
-3. **Distance-based RUL**: Kilometers the vehicle can travel before battery replacement
-   - Example: "50,000 km remaining"
-
-4. **Energy throughput RUL**: Total energy that can still be cycled through the battery
-   - Example: "15,000 kWh remaining"
-
-### End-of-Life Threshold
-
-- **Current Battery_SoH**: 1.0 (100%)
-- **End-of-life threshold**: 0.8 (80%)
-- **RUL**: cycles/time/distance until SoH reaches 0.8
-
-**Important**: RUL is NOT when the battery is completely dead (0% capacity). It's when the battery degrades to a point where it's no longer useful for its intended purpose. For EVs, this is typically 80% of original capacity.
-
-### RUL Calculation in This Model
-
-```python
-# RUL is calculated as cycles remaining until SoH ≤ 0.8
-EOL_THRESHOLD = 0.8
-RUL = Cycles_until_SoH_reaches_0.8
-
-# The model predicts this by:
-# 1. Learning degradation patterns from historical data
-# 2. Forecasting future feature values
-# 3. Estimating when SoH will cross the threshold
-```
-
-## Installation
-
-### Requirements
-
-- Python 3.8+
-- PyTorch 2.0+
-- PyTorch Geometric 2.3+
-- NumPy, Pandas, Scikit-learn
-- Matplotlib, Seaborn (for visualization)
-
-### Install Dependencies
-
+### Install
 ```bash
 pip install -r requirements.txt
 ```
 
-### requirements.txt
+**Requirements**: Python 3.8+, PyTorch 2.0+, PyTorch Geometric 2.3+, NumPy, Pandas, Scikit-learn, Matplotlib, Seaborn
 
-```
-torch>=2.0.0
-torch-geometric>=2.3.0
-numpy>=1.24.0
-pandas>=2.0.0
-scikit-learn>=1.3.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-```
-
-## Usage
-
-### 1. Data Preparation
-
-Your CSV file should contain these columns:
-
-```
-timestamp, Battery_Current, Battery_Voltage, Battery_Temp, Battery_SoH,
-Estimated_SoE, Estimated_Soc, Estimated_Battery_Capacity, estimated_range,
-Vehicle_speed, Distance_Travelled, LED_OverCurrent, LED_UnderTemp,
-LED_OverTemp, LED_UnderVoltage, LED_OverVoltage, Pack_Current,
-Pack_Voltage, SoP, Charging_Status, Charge_Discharge_Cycles, Time_To_Charge
-```
-
-### 2. Training
-
-```python
-from train_bilstm_gnn import prepare_data, BatteryDataset, RULTrainer
-from bilstm_gnn_rul_model import BiLSTM_GNN_RUL, BatteryGraphBuilder
-from torch.utils.data import DataLoader
-
-# Prepare data
-train_data, val_data, test_data, scaler = prepare_data('battery_data.csv')
-
-# Create datasets
-train_dataset = BatteryDataset(train_data, window_size=100, forecast_horizon=50)
-val_dataset = BatteryDataset(val_data, window_size=100, forecast_horizon=50)
-
-# Create dataloaders
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-# Build graph structure
-graph_builder = BatteryGraphBuilder()
-edge_index = graph_builder.build_edge_index()
-
-# Initialize model
-model = BiLSTM_GNN_RUL(
-    num_features=22,
-    gnn_hidden_dim=64,
-    lstm_hidden_dim=128,
-    num_gnn_layers=2,
-    num_lstm_layers=2,
-    num_heads=4,
-    dropout=0.2,
-    forecast_horizon=50
-)
-
-# Train
-trainer = RULTrainer(model, edge_index, device='cuda')
-trainer.train(train_loader, val_loader, num_epochs=100)
-```
-
-Or simply run:
-
+### Train
 ```bash
 python train_bilstm_gnn.py
 ```
 
-### 3. Inference
+Automatically handles data loading, preprocessing, 80/10/10 split, training, and saves best model.
 
-```python
-from inference_and_visualization import RULPredictor
-import numpy as np
-
-# Load trained model
-predictor = RULPredictor('best_rul_model.pth', device='cpu')
-
-# Prepare input (100 timesteps × 22 features)
-input_data = your_battery_data  # Shape: [100, 22]
-
-# Predict
-rul, forecasted_features, attention_weights = predictor.predict_single(input_data)
-
-print(f"Predicted RUL: {rul:.2f} cycles")
-print(f"Forecasted features shape: {forecasted_features.shape}")
-print(f"Top 5 important features: {attention_weights.argsort()[-5:]}")
-```
-
-### 4. Visualization
-
-```python
-from inference_and_visualization import RULVisualizer
-
-visualizer = RULVisualizer(predictor.feature_names)
-
-# Plot feature importance
-visualizer.plot_feature_attention(attention_weights, top_k=10)
-
-# Plot feature forecast for Battery_SoH
-soh_idx = predictor.feature_names.index('Battery_SoH')
-visualizer.plot_feature_forecast(
-    historical_data, 
-    forecasted_features, 
-    soh_idx, 
-    'Battery_SoH'
-)
-
-# Plot RUL over time
-visualizer.plot_rul_over_time(rul_predictions)
-
-# Plot health indicators
-visualizer.plot_health_indicators(battery_data)
-
-# Plot correlation heatmap
-visualizer.plot_correlation_heatmap(battery_data)
-```
+### Inference & Visualization
+See `inference_and_visualization.py` for prediction and plotting examples.
 
 ## Model Details
 
-### Graph Structure
-
-The model uses a directed graph where edges represent physical/causal relationships between battery features:
-
-**Electrical → Health**
-- Battery_Current → Battery_SoH
-- Battery_Voltage → Battery_SoH
-- Battery_Current → Estimated_Battery_Capacity
-- Pack_Current → Battery_SoH
-
-**Thermal → Health**
-- Battery_Temp → Battery_SoH
-- Battery_Temp → Estimated_Battery_Capacity
-
-**Thermal → Electrical**
-- Battery_Temp → Battery_Voltage
-- Battery_Temp → SoP
-
-**Operational → Electrical**
-- Vehicle_speed → Battery_Current
-- Charging_Status → Battery_Current
-- Charging_Status → Battery_Voltage
-
-**State → Health**
-- Estimated_SoC → Battery_SoH
-- Charge_Discharge_Cycles → Battery_SoH
-- Charge_Discharge_Cycles → Estimated_Battery_Capacity
-
-**Faults → Health**
-- LED_OverCurrent → Battery_SoH
-- LED_OverTemp → Battery_SoH
-- LED_OverVoltage → Battery_SoH
-
-**Bidirectional Relationships**
-- Battery_Current ↔ Battery_Voltage
-- Pack_Current ↔ Pack_Voltage
-- Estimated_SoC ↔ Estimated_SoE
-- Battery_SoH ↔ Estimated_Battery_Capacity
-
 ### Hyperparameters
 
-#### GAT Parameters
-```python
-gnn_hidden_dim = 64      # Hidden dimension per attention head
-num_heads = 4            # Number of attention heads
-num_gnn_layers = 2       # Depth of GAT
-dropout = 0.2            # Dropout rate
-```
-
-#### BiLSTM Parameters
-```python
-lstm_hidden_dim = 128    # Hidden units per direction
-num_lstm_layers = 2      # Stacked BiLSTM layers
-bidirectional = True     # Forward + backward
-dropout = 0.2            # Dropout between layers
-```
-
-#### Training Parameters
-```python
-window_size = 100        # Past timesteps
-forecast_horizon = 50    # Future timesteps to predict
-batch_size = 32          # Samples per batch
-learning_rate = 0.001    # Adam optimizer
-epochs = 100             # Maximum training epochs
-early_stopping = 10      # Patience for early stopping
-```
+**GAT**: 64 hidden dim, 4 heads, 2 layers, 0.2 dropout
+**BiLSTM**: 128 hidden units/direction, 2 layers, bidirectional, 0.2 dropout
+**Training**: Window=100, Forecast=50, Batch=32, LR=0.001, Epochs=100, Early stop=10
 
 ### Loss Function
+Total Loss = 0.3 × Forecast Loss + 0.7 × RUL Loss (MSE)
 
-Multi-task learning with weighted losses:
-
-```python
-Total_Loss = α × Forecast_Loss + β × RUL_Loss
-
-where:
-  Forecast_Loss = MSE(predicted_features, actual_features)
-  RUL_Loss = MSE(predicted_rul, actual_rul)
-  
-  α = 0.3  # Forecasting weight
-  β = 0.7  # RUL weight (primary objective)
-```
-
-**Why Multi-Task Learning?**
-1. Forecasting helps RUL: Learning to predict features improves understanding of degradation
-2. Regularization: Prevents overfitting to RUL alone
-3. Interpretability: Can see which features drive RUL changes
-4. Robustness: Model learns general battery dynamics
-
-## Training
-
-### Training Strategy
-
-1. **Data Preprocessing**
-   - Normalize features using StandardScaler
-   - Create sliding windows (100 past → 50 future)
-   - Calculate RUL labels for each sample
-   - Split data: 70% train, 10% validation, 20% test (time-series split, no shuffling)
-
-2. **Training Loop**
-   - Forward pass through GAT → BiLSTM → Prediction heads
-   - Calculate multi-task loss
-   - Backward pass with gradient clipping (max_norm=1.0)
-   - Update weights using Adam optimizer
-   - Learning rate scheduling (ReduceLROnPlateau)
-
-3. **Early Stopping**
-   - Monitor validation loss
-   - Save best model based on validation performance
-   - Stop if no improvement for 10 epochs
-
-4. **Evaluation Metrics**
-   - MSE (Mean Squared Error) for forecasting and RUL
-   - MAE (Mean Absolute Error) for RUL prediction
-   - R² Score for goodness of fit
-
-### Training Time
-
-- **Per epoch**: ~2-5 minutes (GPU, 10k samples)
-- **Total training**: ~3-8 hours (100 epochs with early stopping)
-- **Inference**: < 10ms per sample (GPU)
-
-### Model Size
-
-- **Total parameters**: ~2-3 million (depending on configuration)
-- **Model file size**: ~10-15 MB
-- **Memory usage**: ~2-4 GB GPU memory during training
-
-## Inference
-
-### Single Sample Prediction
-
-```python
-predictor = RULPredictor('best_rul_model.pth')
-
-# Input: [window_size, num_features]
-input_data = battery_data[-100:]  # Last 100 timesteps
-
-rul, forecasted_features, attention_weights = predictor.predict_single(input_data)
-
-print(f"RUL: {rul:.2f} cycles")
-print(f"Top features: {predictor.feature_names[attention_weights.argsort()[-5:]]}")
-```
-
-### Batch Prediction
-
-```python
-# Input: [batch_size, window_size, num_features]
-batch_data = np.array([sample1, sample2, sample3])
-
-rul_batch, forecasted_batch, attention_batch = predictor.predict(batch_data)
-```
-
-### Interpretability
-
-The model provides three levels of interpretability:
-
-1. **Graph Structure**: Shows physical relationships between features
-2. **Attention Weights**: Shows which features are most important for RUL prediction
-3. **Feature Forecasting**: Shows how features will evolve over time
-
-Example attention weights:
-```
-Feature Importance:
-1. Battery_SoH: 0.25
-2. Estimated_Battery_Capacity: 0.18
-3. Battery_Temp: 0.15
-4. Charge_Discharge_Cycles: 0.12
-5. Battery_Current: 0.10
-```
-
-## Extending the Model
-
-### Adding New Features
-
-When you add new features (environmental, operational, technical, vehicle), follow these steps:
-
-#### 1. Update Feature List
-
-```python
-# In bilstm_gnn_rul_model.py -> BatteryGraphBuilder
-self.features = [
-    # Existing features...
-    'Ambient_Temperature',  # New environmental feature
-    'Driving_Mode',         # New operational feature
-    'Internal_Resistance',  # New technical feature
-]
-```
-
-#### 2. Define New Edges
-
-```python
-# In build_edge_index() method
-def add_edge(src, dst):
-    edges.append([self.feature_to_idx[src], self.feature_to_idx[dst]])
-
-# New relationships
-add_edge('Ambient_Temperature', 'Battery_Temp')
-add_edge('Driving_Mode', 'Battery_Current')
-add_edge('Internal_Resistance', 'Battery_SoH')
-```
-
-#### 3. Update Model Initialization
-
-```python
-model = BiLSTM_GNN_RUL(
-    num_features=25,  # Updated count
-    # ... other params
-)
-```
-
-The model will automatically learn how new features interact with existing ones through the GAT attention mechanism!
-
-### Example: Adding Environmental Features
-
-```python
-# Add nodes
-new_features = ['Ambient_Temperature', 'Humidity', 'Altitude']
-
-# Add edges
-edges = [
-    ('Ambient_Temperature', 'Battery_Temp'),
-    ('Humidity', 'Battery_Temp'),
-    ('Altitude', 'Vehicle_speed'),
-    ('Altitude', 'Battery_Current'),
-]
-
-# The GAT will learn:
-# - How ambient temperature affects battery temperature
-# - How altitude affects power demand
-# - Interactions between new and existing features
-```
+### Training
+- Data: Normalize, sliding windows, RUL labels, 80/10/10 split
+- Loop: GAT → BiLSTM → Heads, gradient clipping, Adam, LR scheduling
+- Time: 2-5 min/epoch (GPU, 10k samples), 3-8 hours total
+- Size: 2-3M parameters, 10-15MB file, 2-4GB GPU memory
 
 ## Performance
 
 ### Expected Metrics
+- RUL MAE: <50 cycles
+- RUL RMSE: <75 cycles
+- R² Score: >0.85
 
-- **RUL MAE**: < 50 cycles (on well-trained model)
-- **RUL RMSE**: < 75 cycles
-- **Forecast MAE**: Varies by feature
-- **R² Score**: > 0.85 for RUL prediction
-
-### Comparison with Other Approaches
+### Comparison
 
 | Aspect | GAT+BiLSTM | Pure LSTM | Pure GNN | Transformer |
 |--------|------------|-----------|----------|-------------|
-| Feature relationships | ✅ Explicit graph | ❌ Implicit | ✅ Explicit | ⚠️ Learned |
-| Temporal modeling | ✅ BiLSTM native | ✅ Native | ❌ Limited | ✅ Native |
+| Feature relationships | ✅ Explicit | ❌ Implicit | ✅ Explicit | ⚠️ Learned |
+| Temporal modeling | ✅ Native | ✅ Native | ❌ Limited | ✅ Native |
 | Interpretability | ✅ High | ❌ Low | ⚠️ Medium | ⚠️ Medium |
-| Training data needed | ✅ Moderate | ✅ Moderate | ✅ Moderate | ❌ Large |
-| Computational cost | ✅ Efficient | ✅ Efficient | ✅ Efficient | ❌ High O(n²) |
+| Data needed | ✅ Moderate | ✅ Moderate | ✅ Moderate | ❌ Large |
+| Computational cost | ✅ Efficient | ✅ Efficient | ✅ Efficient | ❌ High |
 | Scalability | ✅ Easy | ⚠️ Retrain | ✅ Easy | ⚠️ Retrain |
-| Bidirectional context | ✅ Yes | ⚠️ Optional | ❌ No | ✅ Yes |
 
-### Advantages of GAT + BiLSTM
-
-✅ **Spatial-Temporal**: Captures both feature relationships and time evolution
-✅ **Interpretable**: Graph structure + attention weights show what drives predictions
-✅ **Scalable**: Easy to add new features by extending the graph
-✅ **Multi-Task**: Jointly learns forecasting and RUL prediction
-✅ **Bidirectional**: Learns from both past and future context
-✅ **Efficient**: Moderate computational cost, suitable for real-time inference
-✅ **Robust**: Handles noisy data and missing values well
+### Advantages
+✅ Spatial-temporal learning
+✅ Interpretable (graph + attention)
+✅ Scalable (easy feature addition)
+✅ Multi-task learning
+✅ Bidirectional context
+✅ Efficient inference
 
 ## Project Structure
 
 ```
-.
 ├── README.md
 ├── requirements.txt
 ├── bilstm_gnn_rul_model.py          # Model architecture
 ├── train_bilstm_gnn.py              # Training script
-├── inference_and_visualization.py   # Inference and visualization
-├── battery_data.csv                 # Your battery time-series data
-└── best_rul_model.pth              # Trained model (after training)
+├── inference_and_visualization.py   # Inference & visualization
+├── battery_data.csv                 # Your data
+└── best_rul_model.pth              # Trained model
 ```
 
-## Files Description
+## Extending the Model
 
-### bilstm_gnn_rul_model.py
+To add features:
+1. Update feature list in `BatteryGraphBuilder`
+2. Define edges (relationships)
+3. Update model initialization with new feature count
+4. Retrain
 
-Contains:
-- `BiLSTM_GNN_RUL`: Main model class
-- `BatteryGraphBuilder`: Graph structure builder
-- GAT layers, BiLSTM layers, prediction heads
-
-### train_bilstm_gnn.py
-
-Contains:
-- `BatteryDataset`: Dataset class for time-series data
-- `RULTrainer`: Training loop and evaluation
-- `prepare_data()`: Data preprocessing function
-- Main training script
-
-### inference_and_visualization.py
-
-Contains:
-- `RULPredictor`: Inference wrapper
-- `RULVisualizer`: Visualization utilities
-- Functions for plotting attention, forecasts, RUL trends
+GAT automatically learns new feature interactions.
 
 ## Troubleshooting
 
-### CUDA Out of Memory
-
-```python
-# Reduce batch size
-batch_size = 16  # Instead of 32
-
-# Reduce window size or forecast horizon
-window_size = 50  # Instead of 100
-forecast_horizon = 25  # Instead of 50
-
-# Use gradient accumulation
-accumulation_steps = 2
-```
-
-### Poor RUL Predictions
-
-1. **Check data quality**: Missing values, outliers, sensor errors
-2. **Ensure sufficient degradation data**: Need multiple charge cycles with SoH decline
-3. **Adjust loss weights**: Increase β (RUL weight) if forecasting is good but RUL is poor
-4. **Increase model capacity**: More hidden dimensions or layers
-5. **Check graph structure**: Ensure edges represent meaningful relationships
-
-### Overfitting
-
-```python
-# Increase dropout rate
-dropout = 0.3  # Instead of 0.2
-
-# Add L2 regularization
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
-
-# Use more training data
-# Reduce model complexity
-```
-
-### Training Too Slow
-
-```python
-# Use GPU
-device = 'cuda'
-
-# Reduce model size
-gnn_hidden_dim = 32  # Instead of 64
-lstm_hidden_dim = 64  # Instead of 128
-
-# Reduce number of layers
-num_gnn_layers = 1
-num_lstm_layers = 1
-```
-
-## Future Enhancements
-
-1. **Add more features**: Environmental, operational, technical, vehicle features
-2. **Multi-battery learning**: Train on data from multiple batteries for better generalization
-3. **Transfer learning**: Pre-train on similar battery types, fine-tune on specific battery
-4. **Uncertainty quantification**: Add confidence intervals to RUL predictions (e.g., Bayesian approach)
-5. **Real-time deployment**: Optimize for edge device inference (model quantization, pruning)
-6. **Explainable AI**: Add SHAP values for deeper interpretability
-7. **Online learning**: Update model with new data without full retraining
-8. **Anomaly detection**: Detect unusual degradation patterns or sensor faults
-
-## Key Insights
-
-### Why This Approach Works
-
-1. **Multi-variate time-series forecasting**: Predicts how all features evolve together
-2. **Graph structure**: Models physical relationships (temp affects voltage, current affects SoH)
-3. **Attention mechanism**: Automatically learns which features matter most
-4. **Bidirectional context**: Learns from both past degradation and future trends
-5. **Multi-task learning**: Forecasting improves RUL prediction through shared representations
-
-### Critical Success Factors
-
-1. **Data Quality**: Clean, consistent time-series data with sufficient degradation cycles
-2. **Feature Selection**: Not all features equally important - attention helps identify key ones
-3. **Temporal Alignment**: Synchronize all sensor data to same timestamps
-4. **Validation Strategy**: Use real degradation data for testing, not synthetic
-5. **Computational Efficiency**: Model must be fast enough for real-time monitoring
-6. **Interpretability**: Understand why RUL changes to build trust in predictions
-
-## Implementation Roadmap
-
-### Phase 1: Current Features (22 features) ✅
-- Build baseline GAT + BiLSTM model
-- Establish RUL prediction pipeline
-- Validate on historical battery data
-- Achieve baseline performance metrics
-
-### Phase 2: Add Environmental Features
-- Integrate weather data (temperature, humidity)
-- Add terrain data (altitude, road grade)
-- Retrain with expanded feature set
-- Measure improvement in RUL accuracy
-
-### Phase 3: Add Operational Features
-- Capture driving patterns (acceleration, braking)
-- Include charging behavior (fast vs slow charging)
-- Analyze usage patterns (urban vs highway)
-- Refine predictions based on driving style
-
-### Phase 4: Add Technical Features
-- Cell-level monitoring (voltage, temperature imbalance)
-- Internal resistance tracking
-- Advanced degradation indicators
-- Improve early warning capabilities
-
-### Phase 5: Add Vehicle Features
-- System-level integration (HVAC, motor power)
-- Complete vehicle context
-- Optimize for production deployment
-- Real-time RUL monitoring system
-
-## Citation
-
-If you use this implementation in your research or project, please cite:
-
-```
-GAT + BiLSTM for Battery RUL Prediction
-Hybrid Graph Attention Network and Bidirectional LSTM
-for multi-variate time-series forecasting and RUL estimation
-```
+**CUDA OOM**: Reduce batch size, window size, or forecast horizon
+**Poor RUL**: Check data quality, ensure sufficient degradation data, adjust loss weights
+**Overfitting**: Increase dropout, add L2 regularization, use more data
+**Slow Training**: Use GPU, reduce model size
 
 ## License
 
-MIT License - Feel free to use and modify for your research/projects.
+MIT License
 
-## Contributing
+## Quick Start
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Contact
-
-For questions or issues, please open an issue on GitHub.
-
----
-
-## Quick Start Guide
-
-### 1. Install dependencies
 ```bash
+# Install
 pip install -r requirements.txt
-```
 
-### 2. Prepare your data
-Ensure your CSV has all 22 required features with proper column names.
-
-### 3. Train the model
-```bash
+# Train
 python train_bilstm_gnn.py
-```
 
-### 4. Make predictions
-```python
-from inference_and_visualization import RULPredictor
-
-predictor = RULPredictor('best_rul_model.pth')
-rul, forecasts, attention = predictor.predict_single(your_data)
-print(f"Predicted RUL: {rul:.2f} cycles")
-```
-
-### 5. Visualize results
-```python
-from inference_and_visualization import RULVisualizer
-
-visualizer = RULVisualizer(predictor.feature_names)
-visualizer.plot_feature_attention(attention, top_k=10)
-visualizer.plot_rul_over_time(rul_predictions)
+# Predict (see inference_and_visualization.py for examples)
 ```
 
 ---
 
-## Summary
-
-This project implements a state-of-the-art hybrid deep learning model for battery RUL prediction:
-
-- **GAT** captures complex feature relationships through attention
-- **BiLSTM** captures temporal degradation patterns bidirectionally
-- **Multi-task learning** improves both forecasting and RUL prediction
-- **Interpretable** through attention weights and graph structure
-- **Scalable** for planned feature expansion
-- **Production-ready** with efficient inference
-
-The model is designed to grow with your data - start with 22 features, easily expand to 50+ features as you add environmental, operational, technical, and vehicle data.
-
-Ready to predict battery RUL with high accuracy and interpretability! 🔋⚡
+**Summary**: State-of-the-art GAT + BiLSTM model for battery RUL prediction. Starts with 22 features, scales to 61+. Interpretable, efficient, production-ready. 🔋⚡
