@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from bilstm_gnn_rul_model import BiLSTM_GNN_RUL, BatteryGraphBuilder
+from model_architecture import BiLSTM_GNN_RUL, BatteryGraphBuilder
 
 
 class RULPredictor:

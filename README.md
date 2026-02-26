@@ -524,7 +524,7 @@ pip install -r requirements.txt
 
 ### Train
 ```bash
-python train_bilstm_gnn.py
+python model_train.py
 ```
 
 Automatically handles data loading, preprocessing, 80/10/10 split, training, and saves best model.
@@ -580,11 +580,12 @@ Total Loss = 0.3 × Forecast Loss + 0.7 × RUL Loss (MSE)
 ```
 ├── README.md
 ├── requirements.txt
-├── bilstm_gnn_rul_model.py          # Model architecture
-├── train_bilstm_gnn.py              # Training script
-├── inference_and_visualization.py   # Inference & visualization
-├── battery_data.csv                 # Your data
-└── best_rul_model.pth              # Trained model
+├── model_architecture.py               # Model architecture (GAT + BiLSTM)
+├── model_train.py                      # Training script
+├── inference_and_visualization.py      # Inference & visualization
+├── extract_data_from_postgres.py       # PostgreSQL data extraction
+├── battery_data.csv                    # Your data
+└── best_rul_model.pth                  # Trained model
 ```
 
 ## Extending the Model
@@ -615,7 +616,7 @@ MIT License
 pip install -r requirements.txt
 
 # Train
-python train_bilstm_gnn.py
+python model_train.py
 
 # Predict (see inference_and_visualization.py for examples)
 ```

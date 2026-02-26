@@ -10,7 +10,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pandas as pd
-from bilstm_gnn_rul_model import BiLSTM_GNN_RUL, BatteryGraphBuilder
+from model_architecture import BiLSTM_GNN_RUL, BatteryGraphBuilder
 
 
 class BatteryDataset(Dataset):
