@@ -1,0 +1,37 @@
+# Electrical → Health relationships
+Battery_Current → Battery_SoH
+Battery_Voltage → Battery_SoH
+Battery_Current → Estimated_Battery_Capacity
+Pack_Current → Battery_SoH
+Pack_Voltage → Battery_SoH
+
+# Thermal → Health relationships
+Battery_Temp → Battery_SoH
+Battery_Temp → Estimated_Battery_Capacity
+
+# Thermal → Electrical relationships
+Battery_Temp → Battery_Voltage
+Battery_Temp → SoP
+Battery_Temp → Pack_Voltage
+
+# Operational → Electrical relationships
+Charging_Status → Battery_Current
+Charging_Status → Battery_Voltage
+
+# State → Health relationships
+Estimated_Soc → Battery_SoH
+Charge_Discharge_Cycles → Battery_SoH
+Charge_Discharge_Cycles → Estimated_Battery_Capacity
+
+# Faults → Health relationships
+LED_OverCurrent → Battery_SoH
+LED_OverTemp → Battery_SoH
+LED_OverVoltage → Battery_SoH
+LED_UnderTemp → Battery_SoH
+LED_UnderVoltage → Battery_SoH
+
+# Bidirectional relationships (mutual influence)
+Battery_Current ↔ Battery_Voltage
+Pack_Current ↔ Pack_Voltage
+Estimated_Soc ↔ Estimated_SoE
+Battery_SoH ↔ Estimated_Battery_Capacity
