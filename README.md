@@ -78,7 +78,7 @@ Standard LSTM only looks at past data. BiLSTM also considers future context, whi
 
 **The workflow:**
 ```
-1. Input: Time-series of 22 battery features
+1. Input: Time-series of 20 battery features
 2. GAT: For each timestep, learn feature relationships via attention
 3. BiLSTM: Process the sequence bidirectionally to capture temporal patterns
 4. Output: RUL prediction + feature forecasts + attention weights
@@ -106,11 +106,11 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 ┌─────────────────────────────────────────────────────────────────┐
 │                    INPUT TIME-SERIES DATA                       │
 │              [batch, time_steps, num_features]                  │
-│                   Example: [32, 100, 22]                        │
+│                   Example: [32, 100, 20]                        │
 │                                                                 │
 │  • batch: Number of samples processed together (32)            │
 │  • time_steps: Historical window size (100 timesteps)          │
-│  • num_features: Battery parameters (22 features)              │
+│  • num_features: Battery parameters (20 features)              │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
@@ -122,7 +122,7 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 │  For each timestep t:                                           │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Step 1: Feature Vector → Graph Nodes                   │  │
-│  │  Each of 22 features becomes a node in the graph        │  │
+│  │  Each of 20 features becomes a node in the graph        │  │
 │  │                                                           │  │
 │  │  Step 2: GAT Layer 1 (Multi-Head Attention, 4 heads)    │  │
 │  │  • Computes attention: α_ij = attention(h_i, h_j)       │  │
@@ -197,16 +197,16 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │  HEAD 1: FORECASTING                                    │   │
 │  │  ────────────────────                                   │   │
-│  │  Purpose: Predict future values of all 22 features      │   │
+│  │  Purpose: Predict future values of all 20 features      │   │
 │  │                                                          │   │
 │  │  Architecture:                                           │   │
 │  │  Input [batch, 256]                                      │   │
 │  │    ↓                                                     │   │
 │  │  Linear(256 → 256) + ReLU + Dropout(0.2)                │   │
 │  │    ↓                                                     │   │
-│  │  Linear(256 → 50 × 22 = 1100)                           │   │
+│  │  Linear(256 → 50 × 20 = 1000)                           │   │
 │  │    ↓                                                     │   │
-│  │  Reshape to [batch, 50, 22]                             │   │
+│  │  Reshape to [batch, 50, 20]                             │   │
 │  │                                                          │   │
 │  │  Output: Future feature values for next 50 timesteps    │   │
 │  │  • Predicts how SoH, Temp, Current, etc. will evolve    │   │
@@ -240,9 +240,9 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 │  │  Architecture:                                           │   │
 │  │  Input [batch, 256]                                      │   │
 │  │    ↓                                                     │   │
-│  │  Linear(256 → 22) + Softmax                             │   │
+│  │  Linear(256 → 20) + Softmax                             │   │
 │  │                                                          │   │
-│  │  Output: Feature importance scores [batch, 22]          │   │
+│  │  Output: Feature importance scores [batch, 20]          │   │
 │  │  • Sums to 1.0 across all features                      │   │
 │  │  • Higher values = more important for RUL               │   │
 │  │  • Example: SoH=0.25, Temp=0.18, Current=0.12, ...     │   │
@@ -253,15 +253,15 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 ┌─────────────────────────────────────────────────────────────────┐
 │                         OUTPUTS                                 │
 │                                                                 │
-│  1. Forecasted Features: [batch, 50, 22]                       │
-│     → Predicted values of all 22 features for next 50 steps    │
+│  1. Forecasted Features: [batch, 50, 20]                       │
+│     → Predicted values of all 20 features for next 50 steps    │
 │     → Used for understanding future degradation trajectory     │
 │                                                                 │
 │  2. RUL Prediction: [batch, 1]                                 │
 │     → Remaining useful life in cycles                          │
 │     → Primary output for maintenance planning                  │
 │                                                                 │
-│  3. Attention Weights: [batch, 22]                             │
+│  3. Attention Weights: [batch, 20]                             │
 │     → Importance score for each feature                        │
 │     → Used for model interpretability and debugging            │
 └─────────────────────────────────────────────────────────────────┘
@@ -310,7 +310,7 @@ Input Time-Series → GAT (Feature Relationships) → BiLSTM (Temporal Patterns)
 ### Information Flow Summary
 
 ```
-Raw Features (22) 
+Raw Features (20) 
   → GAT learns "what affects what" 
   → BiLSTM learns "how it changes over time"
   → Forecasting predicts "what happens next"
@@ -329,7 +329,7 @@ Raw Features (22)
 
 ## Current Implementation
 
-### Features (22 Total)
+### Features (20 Total)
 
 #### 1. Direct Health Indicators (3) - Critical for RUL
 - **Battery_SoH**: State of Health (1=100%, 0.8=EOL)
@@ -353,9 +353,7 @@ Raw Features (22)
 - **Estimated_SoE**: State of Energy
 - **estimated_range**: Predicted range (km)
 
-#### 5. Operational Context (4)
-- **Vehicle_speed**: Speed (km/h)
-- **Distance_Travelled**: Trip distance (km)
+#### 5. Operational Context (2)
 - **Charging_Status**: Boolean
 - **Time_To_Charge**: Remaining charge time
 
@@ -379,7 +377,7 @@ Features connected via physical/causal relationships:
 
 ### Data Requirements
 
-**CSV Format**: All 22 features with proper column names
+**CSV Format**: All 20 features with proper column names
 
 **Quality Requirements**:
 - Consistent sampling rate
@@ -400,51 +398,108 @@ Features connected via physical/causal relationships:
 **Limitations**:
 - Requires sufficient degradation data
 - Performance depends on data quality
-- Limited to 22 features currently
+- Limited to 20 features currently
 - Cannot predict sudden failures
 
 ## Future Scope
 
 ### Planned Feature Expansion (39 additional features)
 
-#### 1. Environmental Features (6)
-Ambient_Temperature, Humidity, Altitude, Weather_Conditions, Road_Grade, Air_Pressure
+The current implementation uses 20 base features. The roadmap below outlines the progressive expansion to 59 features for comprehensive battery health monitoring.
 
-**Impact**: +5-10% RUL accuracy, climate adaptability
+#### 1. Environmental Features (6 additional)
+**Features**: Ambient_Temperature, Humidity, Altitude, Weather_Conditions, Road_Grade, Air_Pressure
 
-#### 2. Operational & Usage Features (10)
-Driving_Mode, Acceleration_Pattern, Braking_Pattern, Trip_Type, Idle_Time, Average_Speed, Speed_Variance, Daily_Usage_Hours, Charging_Frequency, Fast_Charge_Ratio
+**Why these matter**:
+- Ambient temperature affects battery thermal management efficiency
+- Humidity impacts electrical connections and corrosion
+- Altitude affects air density and cooling performance
+- Weather conditions influence driving patterns and energy consumption
+- Road grade impacts power demand and regenerative braking
 
-**Impact**: +10-15% RUL accuracy, personalized predictions
+**Expected Impact**: +5-10% RUL accuracy improvement, climate-adaptive predictions
 
-#### 3. Technical & Internal Battery Features (14)
-Cell_Voltage_Min/Max/Delta, Cell_Temp_Min/Max/Delta, Internal_Resistance, Self_Discharge_Rate, Balancing_Activity, Coulombic_Efficiency, Energy_Efficiency, Power_Fade, Calendar_Age, Storage_Time
+#### 2. Operational & Usage Features (10 additional)
+**Features**: Driving_Mode, Acceleration_Pattern, Braking_Pattern, Trip_Type, Idle_Time, Average_Speed, Speed_Variance, Daily_Usage_Hours, Charging_Frequency, Fast_Charge_Ratio
 
-**Impact**: +15-20% RUL accuracy, cell-level diagnostics
+**Why these matter**:
+- Aggressive driving accelerates battery degradation
+- Fast charging increases thermal stress
+- Usage patterns reveal stress cycles
+- Idle time affects calendar aging
+- Charging frequency impacts cycle life
 
-#### 4. Vehicle & Hardware Features (9)
-Motor_Power_Demand, HVAC_Power_Consumption, Auxiliary_Load, Regenerative_Braking_Energy, Battery_Cooling_System_Status, Thermal_Management_Power, Vehicle_Weight, Tire_Pressure, Aerodynamic_Drag
+**Expected Impact**: +10-15% RUL accuracy improvement, personalized predictions based on driving style
 
-**Impact**: +20-25% RUL accuracy, complete system integration
+#### 3. Technical & Internal Battery Features (14 additional)
+**Features**: Cell_Voltage_Min, Cell_Voltage_Max, Cell_Voltage_Delta, Cell_Temp_Min, Cell_Temp_Max, Cell_Temp_Delta, Internal_Resistance, Self_Discharge_Rate, Balancing_Activity, Coulombic_Efficiency, Energy_Efficiency, Power_Fade, Calendar_Age, Storage_Time
+
+**Why these matter**:
+- Cell-level imbalances indicate degradation
+- Internal resistance directly correlates with aging
+- Efficiency metrics reveal capacity fade
+- Calendar aging affects batteries even when not in use
+- Balancing activity shows cell health variations
+
+**Expected Impact**: +15-20% RUL accuracy improvement, cell-level diagnostics and early fault detection
+
+#### 4. Vehicle & Hardware Features (9 additional)
+**Features**: Motor_Power_Demand, HVAC_Power_Consumption, Auxiliary_Load, Regenerative_Braking_Energy, Battery_Cooling_System_Status, Thermal_Management_Power, Vehicle_Weight, Tire_Pressure, Aerodynamic_Drag
+
+**Why these matter**:
+- Power demand patterns affect discharge rates
+- HVAC and auxiliary loads impact battery stress
+- Regenerative braking affects charge cycles
+- Thermal management efficiency influences temperature control
+- Vehicle weight and aerodynamics affect energy consumption
+
+**Expected Impact**: +20-25% RUL accuracy improvement, complete vehicle system integration
 
 ### Future Enhancements
 
-1. **Multi-Battery Learning**: Train on multiple batteries for better generalization
-2. **Uncertainty Quantification**: Confidence intervals for predictions
-3. **Online Learning**: Update without full retraining
-4. **Anomaly Detection**: Detect unusual patterns or sensor faults
-5. **Real-Time Deployment**: Edge device optimization (<5ms inference, <5MB model)
-6. **Explainable AI**: SHAP values for interpretability
-7. **Multi-Modal RUL**: Cycle/time/distance/energy-based predictions
+1. **Multi-Battery Learning**: Train on fleet data from multiple batteries for better generalization and transfer learning
+2. **Uncertainty Quantification**: Provide confidence intervals and prediction uncertainty for risk assessment
+3. **Online Learning**: Incremental model updates without full retraining for continuous improvement
+4. **Anomaly Detection**: Real-time detection of unusual patterns, sensor faults, or sudden degradation events
+5. **Real-Time Deployment**: Edge device optimization (<5ms inference, <5MB model size) for in-vehicle deployment
+6. **Explainable AI**: SHAP values and counterfactual explanations for deeper interpretability
+7. **Multi-Modal RUL**: Provide RUL in multiple units (cycles, time, distance, energy throughput)
+8. **Predictive Maintenance**: Recommend optimal charging strategies and maintenance schedules
+9. **Digital Twin**: Create virtual battery model for what-if scenario analysis
 
 ### Implementation Roadmap
 
-- **Phase 1 (22 features)** ✅: Baseline model
-- **Phase 2 (28 features)**: + Environmental
-- **Phase 3 (38 features)**: + Operational
-- **Phase 4 (52 features)**: + Technical
-- **Phase 5 (61 features)**: + Vehicle
-- **Phase 6**: Advanced features
+- **Phase 1 (20 features)** ✅: Current baseline implementation
+  - Core electrical, thermal, and health indicators
+  - Basic operational context
+  - Fault indicators
+  - Achieves baseline RUL prediction capability
+
+- **Phase 2 (26 features)**: + Environmental (6 features)
+  - Climate adaptability
+  - Geographic considerations
+  - Weather-aware predictions
+
+- **Phase 3 (36 features)**: + Operational & Usage (10 features)
+  - Driving style personalization
+  - Usage pattern analysis
+  - Behavioral insights
+
+- **Phase 4 (50 features)**: + Technical & Internal (14 features)
+  - Cell-level monitoring
+  - Advanced diagnostics
+  - Efficiency tracking
+
+- **Phase 5 (59 features)**: + Vehicle & Hardware (9 features)
+  - Complete system integration
+  - Vehicle-level optimization
+  - Holistic health assessment
+
+- **Phase 6**: Advanced AI features
+  - Uncertainty quantification
+  - Online learning
+  - Anomaly detection
+  - Real-time deployment optimization
 
 ## RUL Definition
 
@@ -567,4 +622,4 @@ python train_bilstm_gnn.py
 
 ---
 
-**Summary**: State-of-the-art GAT + BiLSTM model for battery RUL prediction. Starts with 22 features, scales to 61+. Interpretable, efficient, production-ready. 🔋⚡
+**Summary**: State-of-the-art GAT + BiLSTM model for battery RUL prediction. Starts with 20 features, scales to 59+. Interpretable, efficient, production-ready. 🔋⚡

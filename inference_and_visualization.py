@@ -19,7 +19,7 @@ class RULPredictor:
         
         # Load model
         self.model = BiLSTM_GNN_RUL(
-            num_features=22,
+            num_features=20,  # Reduced from 22
             gnn_hidden_dim=64,
             lstm_hidden_dim=128,
             num_gnn_layers=2,

@@ -34,46 +34,43 @@ class BatteryDataExtractor:
         self.cursor = None
         
         # Define mapping from database columns to model features
-        # Updated to match your BatteryLog model schema
+        # Updated to match your BatteryLog model schema (20 features)
+        # Note: Some DB columns are stored as strings and will be converted to numeric
         self.column_mapping = {
             # Database column name : Model feature name
             'timestamp': 'timestamp',
-            'present_current': 'Battery_Current',
-            'present_voltage': 'Battery_Voltage',
-            'temp': 'Battery_Temp',
-            'soh': 'Battery_SoH',
-            'soe': 'Estimated_SoE',
-            'soc': 'Estimated_Soc',
-            'estimated_capacity': 'Estimated_Battery_Capacity',
-            'estimated_range': 'estimated_range',
-            'led_overcurrent': 'LED_OverCurrent',
-            'led_undertemp': 'LED_UnderTemp',
-            'led_overtemp': 'LED_OverTemp',
-            'led_undervoltage': 'LED_UnderVoltage',
-            'led_overvoltage': 'LED_OverVoltage',
-            'pack_current': 'Pack_Current',
-            'pack_voltage': 'Pack_Voltage',
-            'sop': 'SoP',
-            'charge_flag': 'Charging_Status',
-            'charge_discharge_cycle': 'Charge_Discharge_Cycles',
-            'charging_time': 'Time_To_Charge'
+            'present_current': 'Battery_Current',      # String in DB → Float
+            'present_voltage': 'Battery_Voltage',      # String in DB → Float
+            'temp': 'Battery_Temp',                    # String in DB → Float
+            'soh': 'Battery_SoH',                      # String in DB → Float
+            'soe': 'Estimated_SoE',                    # String in DB → Float
+            'soc': 'Estimated_Soc',                    # String in DB → Float
+            'estimated_capacity': 'Estimated_Battery_Capacity',  # String in DB → Float
+            'estimated_range': 'estimated_range',      # String in DB → Float
+            'led_overcurrent': 'LED_OverCurrent',      # Boolean in DB
+            'led_undertemp': 'LED_UnderTemp',          # Boolean in DB
+            'led_overtemp': 'LED_OverTemp',            # Boolean in DB
+            'led_undervoltage': 'LED_UnderVoltage',    # Boolean in DB
+            'led_overvoltage': 'LED_OverVoltage',      # Boolean in DB
+            'pack_current': 'Pack_Current',            # Float in DB
+            'pack_voltage': 'Pack_Voltage',            # Float in DB
+            'sop': 'SoP',                              # Float in DB
+            'charge_flag': 'Charging_Status',          # Boolean in DB
+            'charge_discharge_cycle': 'Charge_Discharge_Cycles',  # Float in DB
+            'charging_time': 'Time_To_Charge'          # String in DB → Float
         }
         
-        # Features NOT in your database (will be filled with defaults)
-        self.missing_features = {
-            'Vehicle_speed': 0.0,           # Not in your DB
-            'Distance_Travelled': 0.0       # Not in your DB
-        }
-        
-        # Required model features (22 total)
+        # Required model features (20 total - removed Vehicle_speed and Distance_Travelled)
+        # Order must match BatteryGraphBuilder.features in bilstm_gnn_rul_model.py
         self.required_features = [
-            'timestamp', 'Battery_Current', 'Battery_Voltage', 'Battery_Temp',
+            'Battery_Current', 'Battery_Voltage', 'Battery_Temp',
             'Battery_SoH', 'Estimated_SoE', 'Estimated_Soc', 
-            'Estimated_Battery_Capacity', 'estimated_range', 'Vehicle_speed',
-            'Distance_Travelled', 'LED_OverCurrent', 'LED_UnderTemp',
-            'LED_OverTemp', 'LED_UnderVoltage', 'LED_OverVoltage',
+            'Estimated_Battery_Capacity', 'estimated_range',
+            'LED_OverCurrent', 'LED_UnderTemp', 'LED_OverTemp', 
+            'LED_UnderVoltage', 'LED_OverVoltage',
             'Pack_Current', 'Pack_Voltage', 'SoP', 'Charging_Status',
-            'Charge_Discharge_Cycles', 'Time_To_Charge'
+            'Charge_Discharge_Cycles', 'Time_To_Charge',
+            'timestamp'
         ]
     
     def connect(self):
@@ -165,22 +162,17 @@ class BatteryDataExtractor:
         # Rename columns according to mapping
         df_mapped = df.rename(columns=self.column_mapping)
         
-        # Add missing features with default values
-        for feature, default_value in self.missing_features.items():
-            df_mapped[feature] = default_value
-            print(f"  Added missing feature '{feature}' with default value: {default_value}")
-        
         # Check if all required features are present
         missing_features = set(self.required_features) - set(df_mapped.columns)
         if missing_features:
-            print(f"⚠ Warning: Still missing features: {missing_features}")
+            print(f"⚠ Warning: Missing features: {missing_features}")
             print("  These features will be filled with default values")
             
             # Fill any remaining missing features with default values
             for feature in missing_features:
                 if feature == 'timestamp':
                     df_mapped[feature] = pd.Timestamp.now()
-                elif 'LED_' in feature:
+                elif 'LED_' in feature or feature == 'Charging_Status':
                     df_mapped[feature] = False
                 else:
                     df_mapped[feature] = 0.0
@@ -190,7 +182,8 @@ class BatteryDataExtractor:
         numeric_features = [
             'Battery_Current', 'Battery_Voltage', 'Battery_Temp', 'Battery_SoH',
             'Estimated_SoE', 'Estimated_Soc', 'Estimated_Battery_Capacity',
-            'estimated_range', 'Time_To_Charge'
+            'estimated_range', 'Time_To_Charge', 'Pack_Current', 'Pack_Voltage',
+            'SoP', 'Charge_Discharge_Cycles'
         ]
         
         for feature in numeric_features:
@@ -210,7 +203,7 @@ class BatteryDataExtractor:
         # Reorder columns to match required order
         df_mapped = df_mapped[self.required_features]
         
-        print(f"✓ Mapped columns to model features")
+        print(f"✓ Mapped columns to model features (20 features)")
         
         return df_mapped
     
