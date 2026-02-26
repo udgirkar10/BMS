@@ -329,7 +329,7 @@ Raw Features (20)
 
 ## Current Implementation
 
-### Features (20 Total)
+### Features (22 Total)
 
 #### 1. Direct Health Indicators (3) - Critical for RUL
 - **Battery_SoH**: State of Health (1=100%, 0.8=EOL)
@@ -353,9 +353,11 @@ Raw Features (20)
 - **Estimated_SoE**: State of Energy
 - **estimated_range**: Predicted range (km)
 
-#### 5. Operational Context (2)
+#### 5. Operational Context (4)
 - **Charging_Status**: Boolean
 - **Time_To_Charge**: Remaining charge time
+- **Vehicle_speed**: Current vehicle speed (km/h)
+- **Distance_Travelled**: Distance covered (km)
 
 #### 6. Fault Indicators (3)
 - **LED_OverCurrent**: Overcurrent fault
@@ -372,12 +374,13 @@ Features connected via physical/causal relationships:
 - Current → SoH, Capacity
 - Cycles → Capacity
 - Faults → SoH
-- Speed → Current
+- Vehicle_speed → Current (power demand)
+- Distance_Travelled → Cycles
 - Charging Status → Current, Voltage
 
 ### Data Requirements
 
-**CSV Format**: All 20 features with proper column names
+**CSV Format**: All 22 features with proper column names
 
 **Quality Requirements**:
 - Consistent sampling rate
@@ -398,64 +401,66 @@ Features connected via physical/causal relationships:
 **Limitations**:
 - Requires sufficient degradation data
 - Performance depends on data quality
-- Limited to 20 features currently
 - Cannot predict sudden failures
+- Vehicle speed and distance data must be available
 
 ## Future Scope
 
-### Planned Feature Expansion (39 additional features)
+### Potential Feature Expansion
 
-The current implementation uses 20 base features. The roadmap below outlines the progressive expansion to 59 features for comprehensive battery health monitoring.
+The current implementation uses 22 base features. The model architecture is designed to scale easily by adding more features as nodes in the graph. Below are examples of feature categories that could be added based on data availability and specific use cases.
 
-#### 1. Environmental Features (6 additional)
-**Features**: Ambient_Temperature, Humidity, Altitude, Weather_Conditions, Road_Grade, Air_Pressure
+#### Example Category 1: Environmental Features
+**Example Features**: Ambient_Temperature, Humidity, Altitude, Weather_Conditions, Road_Grade, Air_Pressure
 
-**Why these matter**:
+**Why these could matter**:
 - Ambient temperature affects battery thermal management efficiency
 - Humidity impacts electrical connections and corrosion
 - Altitude affects air density and cooling performance
 - Weather conditions influence driving patterns and energy consumption
 - Road grade impacts power demand and regenerative braking
 
-**Expected Impact**: +5-10% RUL accuracy improvement, climate-adaptive predictions
+**Potential Impact**: Climate-adaptive predictions, geographic considerations
 
-#### 2. Operational & Usage Features (10 additional)
-**Features**: Driving_Mode, Acceleration_Pattern, Braking_Pattern, Trip_Type, Idle_Time, Average_Speed, Speed_Variance, Daily_Usage_Hours, Charging_Frequency, Fast_Charge_Ratio
+#### Example Category 2: Operational & Usage Features
+**Example Features**: Driving_Mode, Acceleration_Pattern, Braking_Pattern, Trip_Type, Idle_Time, Average_Speed, Speed_Variance, Daily_Usage_Hours, Charging_Frequency, Fast_Charge_Ratio
 
-**Why these matter**:
+**Note**: Vehicle_speed and Distance_Travelled are already included in the base 22 features.
+
+**Why these could matter**:
 - Aggressive driving accelerates battery degradation
 - Fast charging increases thermal stress
 - Usage patterns reveal stress cycles
 - Idle time affects calendar aging
 - Charging frequency impacts cycle life
 
-**Expected Impact**: +10-15% RUL accuracy improvement, personalized predictions based on driving style
+**Potential Impact**: Personalized predictions based on driving style, usage pattern analysis
 
-#### 3. Technical & Internal Battery Features (14 additional)
-**Features**: Cell_Voltage_Min, Cell_Voltage_Max, Cell_Voltage_Delta, Cell_Temp_Min, Cell_Temp_Max, Cell_Temp_Delta, Internal_Resistance, Self_Discharge_Rate, Balancing_Activity, Coulombic_Efficiency, Energy_Efficiency, Power_Fade, Calendar_Age, Storage_Time
+#### Example Category 3: Technical & Internal Battery Features
+**Example Features**: Cell_Voltage_Min, Cell_Voltage_Max, Cell_Voltage_Delta, Cell_Temp_Min, Cell_Temp_Max, Cell_Temp_Delta, Internal_Resistance, Self_Discharge_Rate, Balancing_Activity, Coulombic_Efficiency, Energy_Efficiency, Power_Fade, Calendar_Age, Storage_Time
 
-**Why these matter**:
+**Why these could matter**:
 - Cell-level imbalances indicate degradation
 - Internal resistance directly correlates with aging
 - Efficiency metrics reveal capacity fade
 - Calendar aging affects batteries even when not in use
 - Balancing activity shows cell health variations
 
-**Expected Impact**: +15-20% RUL accuracy improvement, cell-level diagnostics and early fault detection
+**Potential Impact**: Cell-level diagnostics, early fault detection, advanced efficiency tracking
 
-#### 4. Vehicle & Hardware Features (9 additional)
-**Features**: Motor_Power_Demand, HVAC_Power_Consumption, Auxiliary_Load, Regenerative_Braking_Energy, Battery_Cooling_System_Status, Thermal_Management_Power, Vehicle_Weight, Tire_Pressure, Aerodynamic_Drag
+#### Example Category 4: Vehicle & Hardware Features
+**Example Features**: Motor_Power_Demand, HVAC_Power_Consumption, Auxiliary_Load, Regenerative_Braking_Energy, Battery_Cooling_System_Status, Thermal_Management_Power, Vehicle_Weight, Tire_Pressure, Aerodynamic_Drag
 
-**Why these matter**:
+**Why these could matter**:
 - Power demand patterns affect discharge rates
 - HVAC and auxiliary loads impact battery stress
 - Regenerative braking affects charge cycles
 - Thermal management efficiency influences temperature control
 - Vehicle weight and aerodynamics affect energy consumption
 
-**Expected Impact**: +20-25% RUL accuracy improvement, complete vehicle system integration
+**Potential Impact**: Complete vehicle system integration, holistic health assessment
 
-### Future Enhancements
+### Potential Enhancements
 
 1. **Multi-Battery Learning**: Train on fleet data from multiple batteries for better generalization and transfer learning
 2. **Uncertainty Quantification**: Provide confidence intervals and prediction uncertainty for risk assessment
@@ -467,39 +472,15 @@ The current implementation uses 20 base features. The roadmap below outlines the
 8. **Predictive Maintenance**: Recommend optimal charging strategies and maintenance schedules
 9. **Digital Twin**: Create virtual battery model for what-if scenario analysis
 
-### Implementation Roadmap
+### Scalability
 
-- **Phase 1 (20 features)** ✅: Current baseline implementation
-  - Core electrical, thermal, and health indicators
-  - Basic operational context
-  - Fault indicators
-  - Achieves baseline RUL prediction capability
+The GAT + BiLSTM architecture is designed for easy feature expansion:
+- **Add new features**: Simply add them as nodes in the graph
+- **Define relationships**: Add edges based on domain knowledge
+- **Retrain**: Model automatically learns feature importance through attention
+- **No architecture changes needed**: Same model structure works for any number of features
 
-- **Phase 2 (26 features)**: + Environmental (6 features)
-  - Climate adaptability
-  - Geographic considerations
-  - Weather-aware predictions
-
-- **Phase 3 (36 features)**: + Operational & Usage (10 features)
-  - Driving style personalization
-  - Usage pattern analysis
-  - Behavioral insights
-
-- **Phase 4 (50 features)**: + Technical & Internal (14 features)
-  - Cell-level monitoring
-  - Advanced diagnostics
-  - Efficiency tracking
-
-- **Phase 5 (59 features)**: + Vehicle & Hardware (9 features)
-  - Complete system integration
-  - Vehicle-level optimization
-  - Holistic health assessment
-
-- **Phase 6**: Advanced AI features
-  - Uncertainty quantification
-  - Online learning
-  - Anomaly detection
-  - Real-time deployment optimization
+This makes the model highly adaptable to different data availability scenarios and evolving requirements.
 
 ## RUL Definition
 
@@ -539,6 +520,7 @@ See `inference_and_visualization.py` for prediction and plotting examples.
 **GAT**: 64 hidden dim, 4 heads, 2 layers, 0.2 dropout
 **BiLSTM**: 128 hidden units/direction, 2 layers, bidirectional, 0.2 dropout
 **Training**: Window=100, Forecast=50, Batch=32, LR=0.001, Epochs=100, Early stop=10
+**Features**: 22 (complete dataset)
 
 ### Loss Function
 Total Loss = 0.3 × Forecast Loss + 0.7 × RUL Loss (MSE)
@@ -591,7 +573,7 @@ Total Loss = 0.3 × Forecast Loss + 0.7 × RUL Loss (MSE)
 ## Extending the Model
 
 To add features:
-1. Update feature list in `BatteryGraphBuilder`
+1. Update feature list in `BatteryGraphBuilder` (model_architecture.py)
 2. Define edges (relationships)
 3. Update model initialization with new feature count
 4. Retrain
@@ -623,4 +605,4 @@ python model_train.py
 
 ---
 
-**Summary**: State-of-the-art GAT + BiLSTM model for battery RUL prediction. Starts with 20 features, scales to 59+. Interpretable, efficient, production-ready. 🔋⚡
+**Summary**: State-of-the-art GAT + BiLSTM model for battery RUL prediction. Currently uses 22 features, easily scalable to more. Interpretable, efficient, production-ready. 🔋⚡

@@ -34,7 +34,7 @@ class BatteryDataExtractor:
         self.cursor = None
         
         # Define mapping from database columns to model features
-        # Updated to match your BatteryLog model schema (20 features)
+        # Updated to match your BatteryLog model schema (22 features - complete dataset)
         # Note: Some DB columns are stored as strings and will be converted to numeric
         self.column_mapping = {
             # Database column name : Model feature name
@@ -47,6 +47,8 @@ class BatteryDataExtractor:
             'soc': 'Estimated_Soc',                    # String in DB → Float
             'estimated_capacity': 'Estimated_Battery_Capacity',  # String in DB → Float
             'estimated_range': 'estimated_range',      # String in DB → Float
+            'vehicle_speed': 'Vehicle_speed',          # Add vehicle speed
+            'distance_travelled': 'Distance_Travelled', # Add distance travelled
             'led_overcurrent': 'LED_OverCurrent',      # Boolean in DB
             'led_undertemp': 'LED_UnderTemp',          # Boolean in DB
             'led_overtemp': 'LED_OverTemp',            # Boolean in DB
@@ -60,12 +62,13 @@ class BatteryDataExtractor:
             'charging_time': 'Time_To_Charge'          # String in DB → Float
         }
         
-        # Required model features (20 total - removed Vehicle_speed and Distance_Travelled)
-        # Order must match BatteryGraphBuilder.features in bilstm_gnn_rul_model.py
+        # Required model features (22 total - complete dataset)
+        # Order must match BatteryGraphBuilder.features in model_architecture.py
         self.required_features = [
             'Battery_Current', 'Battery_Voltage', 'Battery_Temp',
             'Battery_SoH', 'Estimated_SoE', 'Estimated_Soc', 
             'Estimated_Battery_Capacity', 'estimated_range',
+            'Vehicle_speed', 'Distance_Travelled',
             'LED_OverCurrent', 'LED_UnderTemp', 'LED_OverTemp', 
             'LED_UnderVoltage', 'LED_OverVoltage',
             'Pack_Current', 'Pack_Voltage', 'SoP', 'Charging_Status',
@@ -174,6 +177,8 @@ class BatteryDataExtractor:
                     df_mapped[feature] = pd.Timestamp.now()
                 elif 'LED_' in feature or feature == 'Charging_Status':
                     df_mapped[feature] = False
+                elif feature in ['Vehicle_speed', 'Distance_Travelled']:
+                    df_mapped[feature] = 0.0  # Default for operational features
                 else:
                     df_mapped[feature] = 0.0
         
@@ -182,7 +187,8 @@ class BatteryDataExtractor:
         numeric_features = [
             'Battery_Current', 'Battery_Voltage', 'Battery_Temp', 'Battery_SoH',
             'Estimated_SoE', 'Estimated_Soc', 'Estimated_Battery_Capacity',
-            'estimated_range', 'Time_To_Charge', 'Pack_Current', 'Pack_Voltage',
+            'estimated_range', 'Vehicle_speed', 'Distance_Travelled',
+            'Time_To_Charge', 'Pack_Current', 'Pack_Voltage',
             'SoP', 'Charge_Discharge_Cycles'
         ]
         
@@ -203,7 +209,7 @@ class BatteryDataExtractor:
         # Reorder columns to match required order
         df_mapped = df_mapped[self.required_features]
         
-        print(f"✓ Mapped columns to model features (20 features)")
+        print(f"✓ Mapped columns to model features (22 features)")
         
         return df_mapped
     

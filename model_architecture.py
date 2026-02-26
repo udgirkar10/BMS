@@ -21,7 +21,7 @@ class BiLSTM_GNN_RUL(nn.Module):
     Hybrid BiLSTM-GNN model for battery RUL prediction
     
     Args:
-        num_features: Number of input features (20 - removed Vehicle_speed and Distance_Travelled)
+        num_features: Number of input features (22 - complete dataset)
         gnn_hidden_dim: Hidden dimension for GNN layers
         lstm_hidden_dim: Hidden dimension for BiLSTM
         num_gnn_layers: Number of GNN layers
@@ -33,7 +33,7 @@ class BiLSTM_GNN_RUL(nn.Module):
     
     def __init__(
         self,
-        num_features=20,
+        num_features=22,
         gnn_hidden_dim=64,
         lstm_hidden_dim=128,
         num_gnn_layers=2,
@@ -110,7 +110,7 @@ class BiLSTM_GNN_RUL(nn.Module):
         Forward pass
         
         Args:
-            x: Input features [batch_size, time_steps, num_features] (20 features)
+            x: Input features [batch_size, time_steps, num_features] (22 features)
             edge_index: Graph edges [2, num_edges]
             
         Returns:
@@ -166,11 +166,12 @@ class BatteryGraphBuilder:
     """
     
     def __init__(self):
-        # Define feature names (20 features - removed Vehicle_speed and Distance_Travelled)
+        # Define feature names (22 features - complete dataset)
         self.features = [
             'Battery_Current', 'Battery_Voltage', 'Battery_Temp', 
             'Battery_SoH', 'Estimated_SoE', 'Estimated_Soc',
             'Estimated_Battery_Capacity', 'estimated_range',
+            'Vehicle_speed', 'Distance_Travelled',
             'LED_OverCurrent', 'LED_UnderTemp', 'LED_OverTemp', 
             'LED_UnderVoltage', 'LED_OverVoltage',
             'Pack_Current', 'Pack_Voltage', 'SoP',
@@ -200,6 +201,11 @@ class BatteryGraphBuilder:
         add_edge('Battery_Current', 'Estimated_Battery_Capacity')
         add_edge('Pack_Current', 'Battery_SoH')
         add_edge('Pack_Voltage', 'Battery_SoH')
+        
+        # Operational → Electrical relationships (Vehicle usage)
+        add_edge('Vehicle_speed', 'Battery_Current')
+        add_edge('Vehicle_speed', 'Pack_Current')
+        add_edge('Distance_Travelled', 'Charge_Discharge_Cycles')
         
         # Thermal → Health relationships
         add_edge('Battery_Temp', 'Battery_SoH')
@@ -265,7 +271,7 @@ class BatteryGraphBuilder:
 # Example usage and training setup
 if __name__ == "__main__":
     # Model parameters
-    NUM_FEATURES = 20  # Reduced from 22 (removed Vehicle_speed and Distance_Travelled)
+    NUM_FEATURES = 22  # Complete dataset with all features
     WINDOW_SIZE = 100  # Past timesteps
     FORECAST_HORIZON = 50  # Future timesteps
     BATCH_SIZE = 32
@@ -290,7 +296,7 @@ if __name__ == "__main__":
     graph_builder.visualize_graph()
     
     # Example forward pass
-    # Input: [batch_size, window_size, num_features] (20 features)
+    # Input: [batch_size, window_size, num_features] (22 features)
     x = torch.randn(BATCH_SIZE, WINDOW_SIZE, NUM_FEATURES)
     
     # Forward pass

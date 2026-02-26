@@ -6,6 +6,8 @@ Estimated_SoE
 Estimated_Soc
 Estimated_Battery_Capacity
 estimated_range
+Vehicle_speed
+Distance_Travelled
 LED_OverCurrent
 LED_UnderTemp
 LED_OverTemp

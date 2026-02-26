@@ -281,11 +281,12 @@ def prepare_data(data_path, train_size=0.8, val_size=0.1, test_size=0.1):
     
     print(f"Loaded data: {len(df)} rows, {len(df.columns)} columns")
     
-    # Check for required columns (20 features - removed Vehicle_speed and Distance_Travelled)
+    # Check for required columns (22 features - complete dataset)
     required_cols = [
         'Battery_Current', 'Battery_Voltage', 'Battery_Temp', 'Battery_SoH',
         'Estimated_SoE', 'Estimated_Soc', 'Estimated_Battery_Capacity',
-        'estimated_range', 'LED_OverCurrent', 'LED_UnderTemp', 'LED_OverTemp',
+        'estimated_range', 'Vehicle_speed', 'Distance_Travelled',
+        'LED_OverCurrent', 'LED_UnderTemp', 'LED_OverTemp',
         'LED_UnderVoltage', 'LED_OverVoltage', 'Pack_Current',
         'Pack_Voltage', 'SoP', 'Charging_Status',
         'Charge_Discharge_Cycles', 'Time_To_Charge'
@@ -337,7 +338,7 @@ if __name__ == "__main__":
     DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     print(f"Using device: {DEVICE}")
-    print(f"Model features: 20 (removed Vehicle_speed and Distance_Travelled)")
+    print(f"Model features: 22 (complete dataset with all features)")
     
     # Prepare data
     print("Loading and preparing data...")
@@ -363,7 +364,7 @@ if __name__ == "__main__":
     
     # Initialize model
     model = BiLSTM_GNN_RUL(
-        num_features=20,  # Reduced from 22
+        num_features=22,  # Complete dataset with all features
         gnn_hidden_dim=64,
         lstm_hidden_dim=128,
         num_gnn_layers=2,
