@@ -1,8 +1,15 @@
+# Core Deep Learning
 torch
 torch-geometric
+
+# Data Processing
 numpy
 pandas
 scikit-learn
+
+# Visualization
 matplotlib
 seaborn
+
+# Database
 psycopg2-binary
